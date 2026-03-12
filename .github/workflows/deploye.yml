@@ -18,25 +18,24 @@ jobs:
             NODE_BIN="/home/praveenbesetti09/.nvm/versions/node/v24.14.0/bin"
             PROJECT_DIR="/var/www/backend"
 
-            # 1. Force fix permissions for the entire directory
+            # 1. Force Permissions
             sudo chown -R praveenbesetti09:praveenbesetti09 $PROJECT_DIR
-            sudo chmod -R 755 $PROJECT_DIR
             git config --global --add safe.directory $PROJECT_DIR
 
-            # 2. Pull code with sudo to bypass the FETCH_HEAD lock
+            # 2. Pull Code with Sudo (Fixes the FETCH_HEAD error)
             cd $PROJECT_DIR
             sudo git fetch --all
             sudo git reset --hard origin/main
             sudo git clean -fd 
 
-            # 3. Inject .env (Using sudo tee to avoid permission denied)
+            # 3. Inject .env (Fixes the .env Permission error)
             echo "${{ secrets.ENV_FILE_CONTENT }}" | sudo tee .env > /dev/null
 
-            # 4. Install Dependencies
+            # 4. Fresh Install
             sudo rm -rf node_modules
             sudo $NODE_BIN/npm install --production
 
-            # 5. PM2 Restart (Crucial: Using --user to avoid root lock)
+            # 5. PM2 Restart (Restarting as root to match your current setup safely)
             sudo $NODE_BIN/pm2 delete backend-api || true
             sudo $NODE_BIN/pm2 start server.js --name "backend-api"
             sudo $NODE_BIN/pm2 save
