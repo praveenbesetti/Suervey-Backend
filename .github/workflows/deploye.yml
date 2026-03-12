@@ -15,11 +15,15 @@ jobs:
           username: ${{ secrets.GCP_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
           script: |
-            # Create directory if it doesn't exist
-            sudo mkdir -p /var/www/backend
-            sudo chown -R ${{ secrets.GCP_USER }}:${{ secrets.GCP_USER }} /var/www/backend
+            # 1. Load NVM / Node.js environment
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             
-            # Clone or Update Repo
+            # 2. Setup Directory
+            sudo mkdir -p /var/www/backend
+            sudo chown -R $USER:$USER /var/www/backend
+            
+            # 3. Clone or Update
             if [ -d "/var/www/backend/.git" ]; then
               cd /var/www/backend && git pull origin main
             else
@@ -27,9 +31,10 @@ jobs:
               cd /var/www/backend
             fi
 
-            # Sync .env file
+            # 4. Install and Restart
             echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
-
-            # Build and Restart
             npm install --production
+            
+            # Use the full path for pm2 if it still fails, or just:
             pm2 restart backend-api || pm2 start server.js --name "backend-api"
+            sudo systemctl reload nginx
