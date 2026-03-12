@@ -2,40 +2,47 @@ name: Backend CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main ] # This triggers the deployment when you push to the main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to GCP VM
-        uses: appleboy/ssh-action@master
+        # Using v1.0.3 to prevent GitHub 401 download errors
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.GCP_IP }}
           username: ${{ secrets.GCP_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
           script: |
-            # Define exact paths
-            NODE_PATH="/home/praveenbesetti09/.nvm/versions/node/v24.14.0/bin"
+            # 1. Define Paths
+            NODE_BIN="/home/praveenbesetti09/.nvm/versions/node/v24.14.0/bin"
             PROJECT_DIR="/var/www/backend"
 
-            # 1. Update Permissions and Git
+            # 2. Fix Permissions & Git Security
             sudo chown -R praveenbesetti09:praveenbesetti09 $PROJECT_DIR
             git config --global --add safe.directory $PROJECT_DIR
 
-            # 2. Pull latest code
-            cd $PROJECT_DIR && git pull origin main
+            # 3. Clean and Pull Fresh Code
+            cd $PROJECT_DIR
+            git fetch --all
+            git reset --hard origin/main
+            git clean -fd 
 
-            # 3. Create .env file
+            # 4. Inject Environment Variables
             echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
-            # 4. Install Dependencies (Forced via Absolute Path + Sudo)
-            sudo $NODE_PATH/npm install --production
+            # 5. Fresh Dependency Install
+            # We remove node_modules to ensure a completely clean state
+            rm -rf node_modules
+            sudo $NODE_BIN/npm install --production
 
-            # 5. PM2 Restart (Forced via Absolute Path + Sudo)
-            sudo $NODE_PATH/pm2 delete backend-api || true
-            sudo $NODE_PATH/pm2 start server.js --name "backend-api"
+            # 6. PM2 Restart
+            # We delete first to ensure the process memory is wiped clean
+            sudo $NODE_BIN/pm2 delete backend-api || true
+            sudo $NODE_BIN/pm2 start server.js --name "backend-api"
             sudo $NODE_BIN/pm2 save
 
-            # 6. Restart Nginx
-            sudo systemctl restart nginx
+            # 7. Final Nginx Reload
+            sudo systemctl reload nginx
