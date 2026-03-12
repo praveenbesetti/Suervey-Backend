@@ -18,15 +18,12 @@ jobs:
             NODE_BIN="/home/praveenbesetti09/.nvm/versions/node/v24.14.0/bin"
             PROJECT_DIR="/var/www/backend"
 
-            # 1. Fix Permissions First
+            # 1. Ensure the project directory is ready
             sudo mkdir -p $PROJECT_DIR
             sudo chown -R $USER:$USER $PROJECT_DIR
-            sudo chown -R $USER:$USER /home/praveenbesetti09/.nvm
-            
-            # 2. Tell Git this directory is safe
             git config --global --add safe.directory $PROJECT_DIR
 
-            # 3. Clone or Update
+            # 2. Update code
             if [ -d "$PROJECT_DIR/.git" ]; then
               cd $PROJECT_DIR && git pull origin main
             else
@@ -34,18 +31,16 @@ jobs:
               cd $PROJECT_DIR
             fi
 
-            # 4. Write .env and fix permissions
+            # 3. Setup Environment
             echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
-            chmod 600 .env
 
-            # 5. Ensure Binaries are executable
-            chmod +x $NODE_BIN/npm
-            chmod +x $NODE_BIN/pm2
-
-            # 6. Install and Restart
+            # 4. Use absolute paths to run commands
             $NODE_BIN/npm install --production
+            
+            # Fresh start for PM2
             $NODE_BIN/pm2 delete backend-api || true
             $NODE_BIN/pm2 start server.js --name "backend-api"
             $NODE_BIN/pm2 save
             
+            # Reload Nginx
             sudo systemctl reload nginx
