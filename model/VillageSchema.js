@@ -7,14 +7,14 @@ const villageSchema = new mongoose.Schema({
   subagents: [{
     username: { type: String, required: true },
     password: { type: String, required: true },
-    token:{ type: String, unique: true },
-    name: { type: String },
+    token:{ type: String },
+    name: { type: String, required: true },
     phone: { type: String },
     count: { type: Number, default: 0 } 
   }]
 });
 
 // Compound index for super-fast searches
-villageSchema.index({ mandalId: 1, name: 1 });
 
+villageSchema.index({ name: 1, mandalId: 1 }, { unique: true });
 export const Village = mongoose.model('Village', villageSchema);

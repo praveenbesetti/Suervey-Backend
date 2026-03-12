@@ -10,7 +10,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 connectDB();
-
 initSurveyRoutes(app);
 
 const PORT = 5000;

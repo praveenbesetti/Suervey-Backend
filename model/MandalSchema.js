@@ -7,5 +7,5 @@ const mandalSchema = new mongoose.Schema({
   password: { type: String, required: true }, // Always hash this with bcrypt
   agentPhone: { type: String}
 });
-
+mandalSchema.index({ name: 1, districtId: 1 }, { unique: true });
 export const Mandal = mongoose.model('Mandal', mandalSchema);
