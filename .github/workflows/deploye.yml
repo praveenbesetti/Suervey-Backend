@@ -18,27 +18,25 @@ jobs:
             NODE_BIN="/home/praveenbesetti09/.nvm/versions/node/v24.14.0/bin"
             PROJECT_DIR="/var/www/backend"
 
-            # 1. Force Permissions
-            sudo chown -R praveenbesetti09:praveenbesetti09 $PROJECT_DIR
-            git config --global --add safe.directory $PROJECT_DIR
-
-            # 2. Pull Code with Sudo (Fixes the FETCH_HEAD error)
+            # 1. Fix Permissions once and for all
+            sudo chown -R $USER:$USER $PROJECT_DIR
             cd $PROJECT_DIR
-            sudo git fetch --all
-            sudo git reset --hard origin/main
-            sudo git clean -fd 
 
-            # 3. Inject .env (Fixes the .env Permission error)
-            echo "${{ secrets.ENV_FILE_CONTENT }}" | sudo tee .env > /dev/null
+            # 2. Pull Code (No sudo here - let the owner do it)
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
 
-            # 4. Fresh Install
-            sudo rm -rf node_modules
-            sudo $NODE_BIN/npm install --production
+            # 3. Inject .env
+            echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
-            # 5. PM2 Restart (Restarting as root to match your current setup safely)
-            sudo $NODE_BIN/pm2 delete backend-api || true
-            sudo $NODE_BIN/pm2 start server.js --name "backend-api"
-            sudo $NODE_BIN/pm2 save
+            # 4. Fresh Install (Using your specific Node version)
+            $NODE_BIN/npm install --production
+
+            # 5. PM2 Restart
+            $NODE_BIN/pm2 delete backend-api || true
+            $NODE_BIN/pm2 start server.js --name "backend-api"
+            $NODE_BIN/pm2 save
 
             # 6. Reload Nginx
             sudo systemctl reload nginx
