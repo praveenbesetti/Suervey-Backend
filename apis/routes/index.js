@@ -11,7 +11,6 @@ router.get('/villages/:mandalId', surveyController.getVillagesByMandal);
 router.get('/subagents/:mandalId', surveyController.getSubagents);
 router.post('/form', surveyController.submitSurveyForm);
 router.post('/survey/submit', surveyController.authenticateUser);
-router.get('/survey', surveyController.getSurveyData);
-router.get('/surveys', surveyController.getSurveyData);
+router.get('/surveys/grouped', surveyController.getGroupedSurveyData);
 
 export default router;
