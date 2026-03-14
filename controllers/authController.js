@@ -37,7 +37,7 @@ export const authenticateUser = async (req, res) => {
                 data: {
                     villageId: result._id,
                     villageName: result.name,
-                    SurveyorId: result.subagents.surveyorId,
+                    SurveyorId: result.subagents.find(agent => agent.username === username).surveyorId,
                     mandalName: result.mandalId?.name,
                     districtName: result.mandalId?.districtId?.name,
                     token: newToken
