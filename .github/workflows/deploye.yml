@@ -64,6 +64,7 @@ jobs:
               # 4. Pull and Restart (Using 'docker' directly)
               # If 'docker compose' fails, we try 'docker-compose'
               if docker compose version > /dev/null 2>&1; then
+              sudo gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
                 sudo docker compose pull
                 sudo docker compose up -d
               else

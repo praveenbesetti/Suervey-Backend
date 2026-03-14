@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { Mandal } from '../models/MandalSchema.js';
 import { Village } from '../models/VillageSchema.js';
+import { Survey } from '../models/SurveySchema.js';
 
 export const authenticateUser = async (req, res) => {
     try {
@@ -36,6 +37,7 @@ export const authenticateUser = async (req, res) => {
                 data: {
                     villageId: result._id,
                     villageName: result.name,
+                    SurveyorId: result.subagents.surveyorId,
                     mandalName: result.mandalId?.name,
                     districtName: result.mandalId?.districtId?.name,
                     token: newToken

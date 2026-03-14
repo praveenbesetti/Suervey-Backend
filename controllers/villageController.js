@@ -1,5 +1,5 @@
 import {Village} from '../models/VillageSchema.js';
-
+import { v4 as uuidv4 } from 'uuid';
 export const addSubAgent = async (req, res) => {
     try {
         const { villageId } = req.params;
@@ -28,32 +28,32 @@ export const addSubAgent = async (req, res) => {
     }
 };
 
-// Update existing Sub-Agent
 export const updateSubAgent = async (req, res) => {
     try {
         const { villageId, agentId } = req.params;
         const { name, phoneNumber, username, password, token, isAuthorized } = req.body;
 
+        const updateFields = {};
+        if (name !== undefined) updateFields["subagents.$.name"] = name;
+        if (phoneNumber !== undefined) updateFields["subagents.$.phone"] = phoneNumber;
+        if (username !== undefined) updateFields["subagents.$.username"] = username;
+        if (password !== undefined) updateFields["subagents.$.password"] = password;
+        if (token !== undefined) updateFields["subagents.$.token"] = token;
+        if (isAuthorized !== undefined) updateFields["subagents.$.isAuthorized"] = isAuthorized;
+
         const village = await Village.findOneAndUpdate(
             { _id: villageId, "subagents._id": agentId },
-            { 
-                $set: { 
-                    "subagents.$.name": name,
-                    "subagents.$.phone": phoneNumber,
-                    "subagents.$.username": username,
-                    "subagents.$.password": password,
-                    "subagents.$.token": token,
-                    "subagents.$.isAuthorized": isAuthorized
-                } 
-            },
-            { new: true }
+            { $set: updateFields },
+            { new: true, runValidators: true }
         );
+
+        if (!village) return res.status(404).json({ success: false, message: "Not found" });
+
         res.json({ success: true, data: village });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ success: false, error: err.message });
     }
 };
-
 export const getSubagents = async (req, res) => {
     try {
         const villages = await Village.find({ mandalId: req.params.mandalId }, 'name subagents')

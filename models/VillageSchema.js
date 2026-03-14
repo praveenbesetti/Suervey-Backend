@@ -6,9 +6,9 @@ const villageSchema = new mongoose.Schema({
     username: { type: String, required: true },
     password: { type: String, required: true },
     token:{ type: String },
-    surveyId: { type: String },
+    surveyorId: { type: String, unique: true, sparse: true }, // Unique but allows null/undefined
     isAuthorized:{type:Boolean, default:true},
-    name: { type: String, required: true },
+    name: { type: String, },
     phone: { type: String },
     count: { type: Number, default: 0 } 
   }]
