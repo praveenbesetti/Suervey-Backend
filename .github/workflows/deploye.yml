@@ -38,26 +38,26 @@ jobs:
           echo "NGINX_B64=$(base64 -w 0 nginx.conf)" >> "$GITHUB_ENV"
 
       # 5. SSH to VM: Pull the new image and restart containers
+      # VM DEPLOYMENT
       - name: 'SSH and Deploy'
         run: |
-          gcloud compute ssh praveenbesetti09@${{ secrets.GCP_VM_IP }} --zone=asia-south1-c --quiet --command="
-            PROJECT_DIR='/var/www/backend'
-            sudo mkdir -p \$PROJECT_DIR
-            cd \$PROJECT_DIR
+          # Use the VM Name (e.g., survey-backend) NOT the IP address here
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
+            --zone=asia-south1-a \
+            --quiet \
+            --command="
+              PROJECT_DIR='/var/www/backend'
+              sudo mkdir -p \$PROJECT_DIR
+              cd \$PROJECT_DIR
 
-            # Recreate the host files from Git data
-            echo '${{ env.COMPOSE_B64 }}' | base64 -d > docker-compose.yml
-            echo '${{ env.NGINX_B64 }}' | base64 -d > nginx.conf
-            echo '${{ secrets.ENV_FILE_CONTENT }}' > .env
+              # Recreate host files
+              echo '${{ env.COMPOSE_B64 }}' | base64 -d > docker-compose.yml
+              echo '${{ env.NGINX_B64 }}' | base64 -d > nginx.conf
+              echo '${{ secrets.ENV_FILE_CONTENT }}' > .env
 
-            # Authenticate VM's Docker to pull from Registry
-            gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
-
-            # Pull only the new image (fast) and restart
-            sudo docker compose pull
-            sudo docker compose up -d
-            
-            # Remove the old, dangling images to save space
-            sudo docker image prune -f
-            echo '✅ Registry image deployed successfully!'
-          "
+              # Auth and Update Docker
+              gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+              sudo docker compose pull
+              sudo docker compose up -d
+              sudo docker image prune -f
+            "
