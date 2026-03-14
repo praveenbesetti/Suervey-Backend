@@ -1,42 +1,62 @@
-name: Backend CI/CD
+name: Production Docker Build & Deploy
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GCP VM
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. Authenticate with Google Cloud
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v2'
         with:
-          host: ${{ secrets.GCP_IP }}
-          username: ${{ secrets.GCP_USER }}
-          key: ${{ secrets.GCP_SSH_KEY }}
-          script: |
-            NODE_BIN="/home/praveenbesetti09/.nvm/versions/node/v24.14.0/bin"
-            PROJECT_DIR="/var/www/backend"
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-            sudo chown -R praveenbesetti09:praveenbesetti09 $PROJECT_DIR
-            git config --global --add safe.directory $PROJECT_DIR
-            cd $PROJECT_DIR
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
 
-            # If .git folder is missing, re-clone/init
-            if [ ! -d ".git" ]; then
-              git init
-              git remote add origin https://github.com/praveenbesetti/Survey-Backend.git
-            fi
+      # 2. Login to Artifact Registry so we can push
+      - name: Docker Auth
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
 
-            # Force sync
-            git fetch --all
-            git reset --hard origin/main
-            git clean -fd
+      # 3. Build the image using the Git files (.) and push to Registry
+      - name: Build and Push
+        run: |
+          docker build -t asia-south1-docker.pkg.dev/secure-487209/myfarmapp/backend-api:latest .
+          docker push asia-south1-docker.pkg.dev/secure-487209/myfarmapp/backend-api:latest
 
-            echo "${{ secrets.ENV_FILE_CONTENT }}" | sudo tee .env > /dev/null
+      # 4. Convert config files to Base64 for safe transfer
+      - name: Prepare Configs
+        run: |
+          echo "COMPOSE_B64=$(base64 -w 0 docker-compose.yml)" >> "$GITHUB_ENV"
+          echo "NGINX_B64=$(base64 -w 0 nginx.conf)" >> "$GITHUB_ENV"
+
+      # 5. SSH to VM: Pull the new image and restart containers
+      - name: 'SSH and Deploy'
+        run: |
+          gcloud compute ssh praveenbesetti09@${{ secrets.GCP_VM_IP }} --zone=asia-south1-c --quiet --command="
+            PROJECT_DIR='/var/www/backend'
+            sudo mkdir -p \$PROJECT_DIR
+            cd \$PROJECT_DIR
+
+            # Recreate the host files from Git data
+            echo '${{ env.COMPOSE_B64 }}' | base64 -d > docker-compose.yml
+            echo '${{ env.NGINX_B64 }}' | base64 -d > nginx.conf
+            echo '${{ secrets.ENV_FILE_CONTENT }}' > .env
+
+            # Authenticate VM's Docker to pull from Registry
+            gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+            # Pull only the new image (fast) and restart
+            sudo docker compose pull
+            sudo docker compose up -d
             
-            # Use 'node' to run npm/pm2 to avoid "Permission denied"
-            $NODE_BIN/node $NODE_BIN/npm install --production
-            $NODE_BIN/node $NODE_BIN/pm2 restart backend-api --update-env || $NODE_BIN/node $NODE_BIN/pm2 start server.js --name "backend-api"
-            
-            sudo systemctl reload nginx
+            # Remove the old, dangling images to save space
+            sudo docker image prune -f
+            echo '✅ Registry image deployed successfully!'
+          "
