@@ -39,25 +39,38 @@ jobs:
 
       # 5. SSH to VM: Pull the new image and restart containers
       # VM DEPLOYMENT
+      # VM DEPLOYMENT
       - name: 'SSH and Deploy'
         run: |
-          # Use the VM Name (e.g., survey-backend) NOT the IP address here
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
-            --zone=asia-south1-a \
+            --zone=asia-south1-c \
             --quiet \
             --command="
               PROJECT_DIR='/var/www/backend'
+              
+              # 1. Fix Permissions first
               sudo mkdir -p \$PROJECT_DIR
+              sudo chown -R \$USER:\$USER \$PROJECT_DIR
               cd \$PROJECT_DIR
 
-              # Recreate host files
-              echo '${{ env.COMPOSE_B64 }}' | base64 -d > docker-compose.yml
-              echo '${{ env.NGINX_B64 }}' | base64 -d > nginx.conf
-              echo '${{ secrets.ENV_FILE_CONTENT }}' > .env
+              # 2. Recreate host files (using 'sudo tee' to ensure write permission)
+              echo '${{ env.COMPOSE_B64 }}' | base64 -d | sudo tee docker-compose.yml > /dev/null
+              echo '${{ env.NGINX_B64 }}' | base64 -d | sudo tee nginx.conf > /dev/null
+              echo '${{ secrets.ENV_FILE_CONTENT }}' | sudo tee .env > /dev/null
 
-              # Auth and Update Docker
+              # 3. Fix Docker Auth
               gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
-              sudo docker compose pull
-              sudo docker compose up -d
+
+              # 4. Pull and Restart (Using 'docker' directly)
+              # If 'docker compose' fails, we try 'docker-compose'
+              if docker compose version > /dev/null 2>&1; then
+                sudo docker compose pull
+                sudo docker compose up -d
+              else
+                sudo docker-compose pull
+                sudo docker-compose up -d
+              fi
+
               sudo docker image prune -f
+              echo '✅ Deployment successful!'
             "
