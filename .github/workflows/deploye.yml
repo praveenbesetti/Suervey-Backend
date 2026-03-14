@@ -18,21 +18,18 @@ jobs:
             NODE_BIN="/home/praveenbesetti09/.nvm/versions/node/v24.14.0/bin"
             PROJECT_DIR="/var/www/backend"
 
-            # 1. Fix Permissions and Trust the Directory
-            # This prevents the "dubious ownership" error that stops git pull
+            # 1. Force permissions so Git doesn't complain about 'dubious ownership'
             sudo chown -R praveenbesetti09:praveenbesetti09 $PROJECT_DIR
             git config --global --add safe.directory $PROJECT_DIR
             
             cd $PROJECT_DIR
 
-            # 2. Force Sync with GitHub
-            # 'fetch --all' and 'reset --hard' ensures the VM matches GitHub exactly
+            # 2. Hard Sync - This deletes any local VM changes and matches GitHub exactly
             git fetch --all
             git reset --hard origin/main
             git clean -fd
 
-            # 3. Inject Environment Variables
-            # Using sudo tee ensures the file is written even if locked
+            # 3. Inject .env (Ensures latest secrets are used)
             echo "${{ secrets.ENV_FILE_CONTENT }}" | sudo tee .env > /dev/null
             sudo chown praveenbesetti09:praveenbesetti09 .env
 
@@ -40,14 +37,13 @@ jobs:
             $NODE_BIN/npm install --production
 
             # 5. PM2 Management
-            # We use 'restart' with '--update-env' to ensure the new code is loaded into RAM
-            # If the process doesn't exist, we start it.
+            # 'restart --update-env' is safer than delete/start because it prevents downtime
             $NODE_BIN/pm2 restart backend-api --update-env || $NODE_BIN/pm2 start server.js --name "backend-api"
             $NODE_BIN/pm2 save
 
-            # 6. Final System Reloads
+            # 6. Reload Nginx
             sudo systemctl reload nginx
             
-            # 7. Verification (Check logs in GitHub Actions output)
-            echo "Current Commit:"
+            # 7. Final Verification in GitHub Logs
+            echo "Successfully deployed commit:"
             git log -1 --format="%h - %s"
