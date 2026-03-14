@@ -14,6 +14,7 @@ const SurveySchema = new mongoose.Schema({
     doorNumber: String,
     familyHead: String,
     mobile: String,
+    stateName: String,
     districtName: String,
     MandalName: String,
     VillageName: String,
@@ -54,5 +55,21 @@ const SurveySchema = new mongoose.Schema({
     orderMethod: String
 
 }, { timestamps: true })
+
+/* Indexes for faster filtering */
+
+SurveySchema.index({ stateName: 1 })
+SurveySchema.index({ districtName: 1 })
+SurveySchema.index({ MandalName: 1 })
+SurveySchema.index({ VillageName: 1 })
+
+/* Best index for cascading dropdown filtering */
+
+SurveySchema.index({
+    stateName: 1,
+    districtName: 1,
+    MandalName: 1,
+    VillageName: 1
+})
 
 export const Survey = mongoose.model("Survey", SurveySchema)

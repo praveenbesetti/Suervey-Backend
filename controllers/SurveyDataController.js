@@ -1,78 +1,193 @@
-import Survey from '../models/SurveySchema.js';
+import { Survey } from '../models/SurveySchema.js';
 
 export const getGroupedSurveyData = async (req, res) => {
     try {
-        const { district, mandal } = req.query;
+
+        const { state, district, mandal } = req.query;
 
         let filter = {};
-        if (district) filter.districtName = { $regex: district, $options: "i" };
-        if (mandal) filter.MandalName = { $regex: mandal, $options: "i" };
+        let groupField = "$stateName";
+        let level = "state";
 
-        // 2. Aggregate Data
+        /* Apply filters */
+
+        if (state) filter.stateName = state;
+        if (district) filter.districtName = district;
+        if (mandal) filter.MandalName = mandal;
+
+        /* Decide grouping level */
+
+        if (mandal) {
+            groupField = "$VillageName";
+            level = "village";
+        }
+        else if (district) {
+            groupField = "$MandalName";
+            level = "mandal";
+        }
+        else if (state) {
+            groupField = "$districtName";
+            level = "district";
+        }
+
         const groupedData = await Survey.aggregate([
+
             { $match: filter },
+
             {
                 $group: {
-                 
-                    _id: {
-                        district: "$districtName",
-                        mandal: "$MandalName"
-                    },
-                    // Meta data for each group
-                    surveyCount: { $sum: 1 }, 
 
-                    rice: { $sum: "$consumption.rice.value" },
-                    wheat: { $sum: "$consumption.wheat.value" },
-                    toorDal: { $sum: "$consumption.toorDal.value" },
-                    moongDal: { $sum: "$consumption.moongDal.value" },
-                    chanaDal: { $sum: "$consumption.chanaDal.value" },
-                    oil: { $sum: "$consumption.oil.value" },
-                    sugar: { $sum: "$consumption.sugar.value" },
-                    salt: { $sum: "$consumption.salt.value" },
-                    tea: { $sum: "$consumption.tea.value" },
-                    milk: { $sum: "$consumption.milk.value" },
-                    eggs: { $sum: "$consumption.eggs.value" },
-                    bathSoap: { $sum: "$consumption.bathSoap.value" },
-                    shampoo: { $sum: "$consumption.shampoo.value" },
-                    detergent: { $sum: "$consumption.detergent.value" },
-                    dishWash: { $sum: "$consumption.dishWash.value" },
-                    toothpaste: { $sum: "$consumption.toothpaste.value" }
+                    _id: groupField,
+
+                    surveyCount: { $sum: 1 },
+
+                    /* Safe numeric totals */
+
+                    totalFamilyMembers: {
+                        $sum: {
+                            $toInt: { $ifNull: ["$familyMembersMax", 0] }
+                        }
+                    },
+                    totalMonthlySpending: {
+                        $sum: {
+                            $toInt: { $ifNull: ["$monthlySpendingMax", 0] }
+                        }
+                    },
+
+                    rice: { $sum: { $ifNull: ["$consumption.rice.value", 0] } },
+                    wheat: { $sum: { $ifNull: ["$consumption.wheat.value", 0] } },
+                    toorDal: { $sum: { $ifNull: ["$consumption.toorDal.value", 0] } },
+                    moongDal: { $sum: { $ifNull: ["$consumption.moongDal.value", 0] } },
+                    chanaDal: { $sum: { $ifNull: ["$consumption.chanaDal.value", 0] } },
+                    oil: { $sum: { $ifNull: ["$consumption.oil.value", 0] } },
+                    sugar: { $sum: { $ifNull: ["$consumption.sugar.value", 0] } },
+                    salt: { $sum: { $ifNull: ["$consumption.salt.value", 0] } },
+                    tea: { $sum: { $ifNull: ["$consumption.tea.value", 0] } },
+                    milk: { $sum: { $ifNull: ["$consumption.milk.value", 0] } },
+                    eggs: { $sum: { $ifNull: ["$consumption.eggs.value", 0] } },
+                    bathSoap: { $sum: { $ifNull: ["$consumption.bathSoap.value", 0] } },
+                    shampoo: { $sum: { $ifNull: ["$consumption.shampoo.value", 0] } },
+                    detergent: { $sum: { $ifNull: ["$consumption.detergent.value", 0] } },
+                    dishWash: { $sum: { $ifNull: ["$consumption.dishWash.value", 0] } },
+                    toothpaste: { $sum: { $ifNull: ["$consumption.toothpaste.value", 0] } },
+                    other: { $sum: { $ifNull: ["$consumption.other.value", 0] } },
+
+                    /* Collect string values */
+
+                    familyType: { $push: { $ifNull: ["$familyType", "Unknown"] } },
+                    occupation: { $push: "$occupation" },
+                    grocerySource: { $push: "$grocerySource" },
+                    purchaseFrequency: { $push: "$purchaseFrequency" },
+                    productType: { $push: "$productType" },
+                    orderMethod: { $push: "$orderMethod" },
+                    brandedPreference: { $push: "$brandedPreference" },
+                    cheaperOption: { $push: "$cheaperOption" }
+
                 }
             },
+
             {
                 $project: {
+
                     _id: 0,
-                    district: "$_id.district",
-                    mandal: "$_id.mandal",
+
+                    location: "$_id",
+
                     surveyCount: 1,
-                    rice: 1,
-                    wheat: 1,
-                    toorDal: 1,
-                    moongDal: 1,
-                    chanaDal: 1,
-                    oil: 1,
-                    sugar: 1,
-                    salt: 1,
-                    tea: 1,
-                    milk: 1,
-                    eggs: 1,
-                    bathSoap: 1,
-                    shampoo: 1,
-                    detergent: 1,
-                    dishWash: 1,
-                    toothpaste: 1
+                    familyMembers: "$totalFamilyMembers",
+                    monthlySpending: "$totalMonthlySpending",
+                    totals: {
+                        rice: "$rice",
+                        wheat: "$wheat",
+                        toorDal: "$toorDal",
+                        moongDal: "$moongDal",
+                        chanaDal: "$chanaDal",
+                        oil: "$oil",
+                        sugar: "$sugar",
+                        salt: "$salt",
+                        tea: "$tea",
+                        milk: "$milk",
+                        eggs: "$eggs",
+                        bathSoap: "$bathSoap",
+                        shampoo: "$shampoo",
+                        detergent: "$detergent",
+                        dishWash: "$dishWash",
+                        toothpaste: "$toothpaste",
+                        other: "$other"
+                    },
+
+                    familyType: 1,
+                    occupation: 1,
+                    grocerySource: 1,
+                    purchaseFrequency: 1,
+                    productType: 1,
+                    orderMethod: 1,
+                    brandedPreference: 1,
+                    cheaperOption: 1
+
                 }
             },
-            { $sort: { district: 1, mandal: 1 } }
+
+            { $sort: { location: 1 } }
+
         ]);
+
+        /* Percentage calculator */
+
+        const calculatePercentage = (arr) => {
+
+            const valid = arr.filter(v => v && v !== "");
+            const total = valid.length;
+
+            if (total === 0) return [];
+
+            const map = {};
+
+            valid.forEach(v => {
+                map[v] = (map[v] || 0) + 1;
+            });
+
+            return Object.entries(map).map(([key, value]) => ({
+                value: key,
+                percent: Number(((value / total) * 100).toFixed(2))
+            }));
+
+        };
+
+        /* Final formatted response */
+
+        const finalData = groupedData.map(item => ({
+
+            location: item.location,
+
+            surveyCount: item.surveyCount,
+
+            totals: item.totals,
+            familyMembers: item.familyMembers,
+            monthlySpending: item.monthlySpending,
+
+            distributions: {
+                familyType: calculatePercentage(item.familyType),
+                occupation: calculatePercentage(item.occupation),
+                grocerySource: calculatePercentage(item.grocerySource),
+                purchaseFrequency: calculatePercentage(item.purchaseFrequency),
+                productType: calculatePercentage(item.productType),
+                orderMethod: calculatePercentage(item.orderMethod),
+                brandedPreference: calculatePercentage(item.brandedPreference),
+                cheaperOption: calculatePercentage(item.cheaperOption)
+            }
+
+        }));
 
         res.json({
             success: true,
-            totalLocations: groupedData.length,
-            data: groupedData
+            level,
+            totalLocations: finalData.length,
+            data: finalData
         });
 
     } catch (err) {
+        console.error("Grouped Survey Error:", err);
         res.status(500).json({ error: err.message });
     }
 };
