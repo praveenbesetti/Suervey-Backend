@@ -6,10 +6,11 @@ import Auth from './authRouter.js';
 import SurveyForm from './surveyFormRoute.js';
 
 const router = express.Router();
-router.use('/', Auth);
-router.use('/', District);
-router.use('/', Mandal);
-router.use('/', Village);
-router.use('/', SurveyForm);
+
+router.use('/auth', Auth);
+router.use('/districts', District);
+router.use('/mandals', Mandal);
+router.use('/villages', Village);
+router.use('/surveys', SurveyForm);
 
 export default router;
