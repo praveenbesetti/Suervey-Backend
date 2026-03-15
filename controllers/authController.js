@@ -25,7 +25,8 @@ export const authenticateUser = async (req, res) => {
                     mandalId,
                     "subagents.username": username,
                     "subagents.password": password,
-                    "subagents.token": token
+                    "subagents.token": token,
+                    "subagents.isAuthorized":true
                 },
                 { $set: { "subagents.$.token": newToken } },
                 { new: true }
@@ -33,7 +34,6 @@ export const authenticateUser = async (req, res) => {
                 path: 'mandalId',
                 populate: {
                     path: 'districtId',
-                    // 🚀 DEEP POPULATE: This reaches the State collection
                     populate: { path: 'stateId' }
                 }
             });

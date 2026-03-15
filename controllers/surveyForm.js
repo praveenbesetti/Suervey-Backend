@@ -12,15 +12,11 @@ function generateRandomLetters(length) {
 
 export const submitSurveyForm = async (req, res) => {
     try {
-        // 1. Extract IDs from the request body
         const { villageId, surveyorId } = req.body;
-
-        // 2. Generate Survey ID and Save to 'surveys' collection
         req.body.surveyId = `${generateRandomLetters(3)}-${crypto.randomInt(100000000, 999999999)}`;
         const survey = new Survey(req.body);
         await survey.save();
 
-        // 3. Update the 'villages' collection directly using IDs
         const updatedVillage = await Village.findOneAndUpdate(
             { 
                 _id: new mongoose.Types.ObjectId(villageId), 
