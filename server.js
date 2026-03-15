@@ -9,17 +9,13 @@ dotenv.config(); // 2. Load env at the very top to fix JWT Secret error
 
 const app = express();
 
-
+// 3. Fixed CORS (Typo: hhtp -> http) and added credentials support
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // ALLOWS THE APK
-    if (["https://hariyalimart.duckdns.org"].includes(origin)) return callback(null, true);
-    callback(new Error("CORS Blocked"));
-  },
-  credentials: true
+  origin: '35.244.242.193:80', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // MANDATORY for cookies to work
 }));
-
-
 
 app.use(express.json());
 app.use(cookieParser()); // 4. Use cookie parser before routes
